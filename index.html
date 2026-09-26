@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>奶娃快跑</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0a0a1a; overflow: hidden; font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; }
+    #canvas { display: block; width: 100vw; height: 100vh; }
+
+    /* 加载界面 */
+    #loading {
+      position: fixed; inset: 0;
+      background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      z-index: 100; transition: opacity 0.5s;
+    }
+    #loading h1 {
+      font-size: 3rem; color: #FFD700;
+      text-shadow: 0 0 30px rgba(255,215,0,0.8);
+      margin-bottom: 1rem; letter-spacing: 0.1em;
+    }
+    #loading p { color: #aaa; margin-bottom: 2rem; font-size: 0.9rem; }
+    #progress-bar {
+      width: 300px; height: 8px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 4px; overflow: hidden;
+    }
+    #progress-fill {
+      height: 100%; width: 0%;
+      background: linear-gradient(90deg, #FFD700, #FF8C00);
+      border-radius: 4px; transition: width 0.3s;
+    }
+    #loading-text { color: #888; margin-top: 1rem; font-size: 0.85rem; }
+
+    /* 开始界面 */
+    #start-screen {
+      position: fixed; inset: 0;
+      background: linear-gradient(135deg, rgba(10,10,26,0.85), rgba(22,33,62,0.85));
+      display: none; flex-direction: column;
+      align-items: center; justify-content: center;
+      z-index: 90;
+    }
+    #start-screen h1 {
+      font-size: 4rem; color: #FFD700;
+      text-shadow: 0 0 40px rgba(255,215,0,0.9), 0 4px 8px rgba(0,0,0,0.5);
+      margin-bottom: 0.5rem; letter-spacing: 0.15em;
+    }
+    #start-screen .subtitle {
+      color: #FF8C00; font-size: 1.1rem;
+      margin-bottom: 3rem; letter-spacing: 0.2em;
+    }
+    #start-btn {
+      padding: 1rem 3rem; font-size: 1.3rem;
+      background: linear-gradient(135deg, #FFD700, #FF8C00);
+      color: #1a1a2e; border: none; border-radius: 50px;
+      cursor: pointer; font-weight: bold; letter-spacing: 0.1em;
+      box-shadow: 0 8px 32px rgba(255,215,0,0.4);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    #start-btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 40px rgba(255,215,0,0.6);
+    }
+    .controls-hint {
+      margin-top: 2rem; color: #666; font-size: 0.85rem;
+      text-align: center; line-height: 2;
+    }
+
+    /* 游戏HUD */
+    #hud {
+      position: fixed; top: 0; left: 0; right: 0;
+      padding: 1.5rem 2rem; display: none;
+      justify-content: space-between; align-items: flex-start;
+      z-index: 50; pointer-events: none;
+    }
+    #score-display {
+      color: #FFD700; font-size: 2rem; font-weight: bold;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+    }
+    #score-label { color: #aaa; font-size: 0.8rem; letter-spacing: 0.1em; }
+    #coin-display {
+      color: #FFD700; font-size: 1.2rem;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+    }
+    #pause-btn {
+      pointer-events: all; background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2); color: white;
+      padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer;
+      font-size: 0.9rem; backdrop-filter: blur(10px);
+    }
+
+    /* 暂停界面 */
+    #pause-screen {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7); backdrop-filter: blur(8px);
+      display: none; flex-direction: column;
+      align-items: center; justify-content: center;
+      z-index: 80;
+    }
+    #pause-screen h2 { color: #FFD700; font-size: 2.5rem; margin-bottom: 2rem; }
+
+    /* 结束界面 */
+    #gameover-screen {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.8); backdrop-filter: blur(8px);
+      display: none; flex-direction: column;
+      align-items: center; justify-content: center;
+      z-index: 85;
+    }
+    #gameover-screen h2 {
+      color: #FF4444; font-size: 3rem; margin-bottom: 1rem;
+      text-shadow: 0 0 30px rgba(255,68,68,0.8);
+    }
+    #final-score { color: #FFD700; font-size: 1.5rem; margin-bottom: 0.5rem; }
+    #best-score { color: #aaa; font-size: 1rem; margin-bottom: 2rem; }
+
+    .menu-btn {
+      padding: 0.8rem 2.5rem; font-size: 1.1rem;
+      background: linear-gradient(135deg, #FFD700, #FF8C00);
+      color: #1a1a2e; border: none; border-radius: 50px;
+      cursor: pointer; font-weight: bold; margin: 0.5rem;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 4px 16px rgba(255,215,0,0.3);
+    }
+    .menu-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(255,215,0,0.5);
+    }
+    .menu-btn.secondary {
+      background: rgba(255,255,255,0.1);
+      color: white; border: 1px solid rgba(255,255,255,0.2);
+      box-shadow: none;
+    }
+    .menu-btn.secondary:hover { background: rgba(255,255,255,0.2); box-shadow: none; }
+
+    /* 移动端虚拟按钮 */
+    #mobile-controls {
+      position: fixed; bottom: 2rem; left: 0; right: 0;
+      display: none; justify-content: space-between;
+      padding: 0 2rem; z-index: 50;
+    }
+    .mobile-btn {
+      width: 80px; height: 80px; border-radius: 50%;
+      background: rgba(255,215,0,0.2); border: 2px solid rgba(255,215,0,0.5);
+      color: #FFD700; font-size: 1.5rem;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent;
+      backdrop-filter: blur(10px);
+    }
+    .mobile-center { display: flex; gap: 1rem; align-items: center; }
+
+    @media (hover: none) {
+      #mobile-controls { display: flex; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+
+  <!-- 加载界面 -->
+  <div id="loading">
+    <h1>🐂 奶娃快跑</h1>
+    <p>NAI WA · FAST RUN</p>
+    <div id="progress-bar"><div id="progress-fill"></div></div>
+    <div id="loading-text">正在加载游戏资源...</div>
+  </div>
+
+  <!-- 开始界面 -->
+  <div id="start-screen">
+    <h1>🐂 奶娃快跑</h1>
+    <div class="subtitle">NAI WA · FAST RUN</div>
+    <button id="start-btn" onclick="startGame()">开始奔跑</button>
+    <div class="controls-hint">
+      ← → 方向键 / A D 键 — 左右换道<br>
+      ↑ 空格 / W — 跳跃<br>
+      ↓ / S — 下蹲<br>
+      P — 暂停
+    </div>
+  </div>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div>
+      <div id="score-label">SCORE</div>
+      <div id="score-display">0</div>
+    </div>
+    <div id="coin-display">🪙 0</div>
+    <button id="pause-btn" onclick="togglePause()">⏸ 暂停</button>
+  </div>
+
+  <!-- 暂停界面 -->
+  <div id="pause-screen">
+    <h2>⏸ 暂停</h2>
+    <button class="menu-btn" onclick="togglePause()">继续游戏</button>
+    <button class="menu-btn secondary" onclick="goHome()">返回主页</button>
+  </div>
+
+  <!-- 结束界面 -->
+  <div id="gameover-screen">
+    <h2>💀 游戏结束</h2>
+    <div id="final-score">本次得分：0</div>
+    <div id="best-score">最高记录：0</div>
+    <button class="menu-btn" onclick="restartGame()">再来一次</button>
+    <button class="menu-btn secondary" onclick="goHome()">返回主页</button>
+  </div>
+
+  <!-- 移动端控制 -->
+  <div id="mobile-controls">
+    <div class="mobile-btn" id="btn-left" ontouchstart="mobileInput('left',true)" ontouchend="mobileInput('left',false)">◀</div>
+    <div class="mobile-center">
+      <div class="mobile-btn" id="btn-down" ontouchstart="mobileInput('down',true)" ontouchend="mobileInput('down',false)">▼</div>
+      <div class="mobile-btn" id="btn-jump" ontouchstart="mobileInput('jump',true)" ontouchend="mobileInput('jump',false)">▲</div>
+    </div>
+    <div class="mobile-btn" id="btn-right" ontouchstart="mobileInput('right',true)" ontouchend="mobileInput('right',false)">▶</div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.165.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
